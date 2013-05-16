@@ -26,35 +26,40 @@ void ProcessFrame(uint8 *pInputImg)
 
 	if(data.ipc.state.nThreshold==0){
 		uint32 hist[256];
+		uint32 histMean[256];
 		uint8* p=data.u8TempImage[GRAYSCALE];
 
 		memset(hist,0,sizeof(hist));
 		for(int i=0;i<siz;i++){
 			hist[p[i]]++;
 		}
+		memset(histMean,0,sizeof(hist));
+		for(int i=0;i<256;i++){
+			histMean[i]=hist[i]*i;
+		}
 
-		int kMax=0;
-		int sigmaMax=0;
-		int W0,W1,M0,M1,k,g;
+		int32 kMax=0;
+		float sigmaMax=0,t;
+		int32 W0,W1,M0,M1,k,g;
+		//float t;
 		for(k=0;k<256;k++){
 			W0=W1=M0=M1=0;
 			for(g=0;g<256;g++){
 				if(g<=k){
 					W0+=hist[g];
-					M0+=hist[g]*g;
+					M0+=histMean[g];
 				}else{
 					W1+=hist[g];
-					M1+=hist[g]*g;
+					M1+=histMean[g];
 				}
 			}
-			M0=M0*W1-M1*W0;
-			M1=W0*W1;
-			M0=(int)((float)M0/(float)M1);
-			M0=M0*M0;
-			M0=M0*W0*W1;
-			if(M0>sigmaMax){
+			M0=(int32)((float)M0/(float)W0);
+			M1=(int32)((float)M1/(float)W1);
+			M0=M0-M1;
+			t=(float)M0*(float)M0*(float)W0*(float)W1;
+			if(t>sigmaMax){
 				kMax=k;
-				sigmaMax=M0;
+				sigmaMax=t;
 			}
 		}
 		thresh=kMax;
