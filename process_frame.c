@@ -27,42 +27,41 @@ void ProcessFrame(uint8 *pInputImg)
 	if(data.ipc.state.nThreshold==0){
 		uint32 hist[256];
 		uint32 histMean[256];
+		uint32 Wtot,Mtot;
 		uint8* p=data.u8TempImage[GRAYSCALE];
 
 		memset(hist,0,sizeof(hist));
 		for(int i=0;i<siz;i++){
 			hist[p[i]]++;
 		}
+		Wtot=siz;
+		Mtot=0;
 		memset(histMean,0,sizeof(hist));
 		for(int i=0;i<256;i++){
 			histMean[i]=hist[i]*i;
+			Mtot+=histMean[i];
 		}
 
-		int32 kMax=0;
 		float sigmaMax=0,t;
-		int32 W0,W1,M0,M1,k,g;
-		//float t;
+		int32 W0,W1,M0,M1,k,Wsum,Msum;
+		Wsum=Msum=0;
 		for(k=0;k<256;k++){
 			W0=W1=M0=M1=0;
-			for(g=0;g<256;g++){
-				if(g<=k){
-					W0+=hist[g];
-					M0+=histMean[g];
-				}else{
-					W1+=hist[g];
-					M1+=histMean[g];
-				}
-			}
+			Wsum+=hist[k];
+			W0=Wsum;
+			Msum+=histMean[k];
+			M0=Msum;
+			W1=Wtot-W0;
+			M1=Mtot-M0;
 			M0=(int32)((float)M0/(float)W0);
 			M1=(int32)((float)M1/(float)W1);
 			M0=M0-M1;
-			t=(float)M0*(float)M0*(float)W0*(float)W1;
+			t=((float)M0)*((float)M0)*((float)W0)*((float)W1);
 			if(t>sigmaMax){
-				kMax=k;
+				thresh=k;
 				sigmaMax=t;
 			}
 		}
-		thresh=kMax;
 	}else{
 		thresh=data.ipc.state.nThreshold*255/100;
 	}
@@ -77,17 +76,6 @@ void ProcessFrame(uint8 *pInputImg)
 			data.u8TempImage[THRESHOLD][r+c]=abs((short)data.u8TempImage[GRAYSCALE][r+c])>thresh ? 0:255;
 		}
 	}
-
-	/*
-	{
-		//for debugging purposes we log the background values to console out
-		//we chose the center pixel of the image (adaption to other pixel is straight forward)
-		int offs = nc*(OSC_CAM_MAX_IMAGE_HEIGHT/2)/2+nc/2;
-
-		OscLog(INFO, "%d %d %d %d %d\n", (int) data.u8TempImage[GRAYSCALE][offs], (int) data.u8TempImage[BACKGROUND][offs], (int) data.u8TempImage[BACKGROUND][offs]-data.ipc.state.nThreshold,
-										 (int) data.u8TempImage[BACKGROUND][offs]+data.ipc.state.nThreshold, (int) data.u8TempImage[FGRCOUNTER][offs]);
-	}
-	*/
 
 	for(r = nc; r < siz-nc; r+= nc)/* we skip the first and last line */
 	{
